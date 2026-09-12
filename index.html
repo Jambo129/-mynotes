@@ -17,7 +17,8 @@
       --selected-item: #e5e3de;
       --progress-red: #e74c3c;
 
-      /* Font Settings Dynamic Variables */
+      /* Font & Size Settings Dynamic Variables */
+      --editor-font-size: 16px;
       --editor-line-height: 1.8em;
       --editor-line-width: 60em;
       --editor-paragraph-spacing: 0em;
@@ -529,7 +530,7 @@
       justify-content: center;
       padding: 20px;
       text-align: center;
-      overflow-y: auto;
+      overflow-y: scroll;
     }
 
     .empty-title {
@@ -683,6 +684,25 @@
       pointer-events: auto;
     }
 
+    .custom-scrollbar-track {
+      position: absolute;
+      top: 0;
+      left: 4px;
+      width: 6px;
+      height: 100%;
+      z-index: 70;
+      pointer-events: none;
+    }
+
+    .custom-scrollbar-thumb {
+      position: absolute;
+      width: 6px;
+      background-color: rgba(0, 0, 0, 0.35);
+      border-radius: 3px;
+      top: 0;
+      transition: opacity 0.15s ease;
+    }
+
     .empty-main-view {
       flex: 1;
       display: flex;
@@ -823,6 +843,9 @@
       flex-direction: column;
       gap: 12px;
       overflow-y: auto;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+
       min-height: 0;
       -webkit-overflow-scrolling: touch;
       touch-action: pan-y;
@@ -833,10 +856,14 @@
       align-items: center;
     }
 
+    .editor-body::-webkit-scrollbar {
+      display: none;
+    }
+
     .input-note-title {
       border: none;
       background: transparent;
-      font-size: 24px;
+      font-size: calc(var(--editor-font-size) * 1.5);
       font-weight: 700;
       color: var(--text-dark);
       outline: none;
@@ -857,7 +884,7 @@
     .input-note-body {
       border: none;
       background: transparent;
-      font-size: 16px;
+      font-size: var(--editor-font-size);
       color: var(--text-dark);
       outline: none;
       width: 100%;
@@ -1041,6 +1068,19 @@
         <div style="width: 40px;"></div>
       </div>
       <div class="menu-list">
+        <!-- Note Size Row -->
+        <div class="more-menu-item" style="padding: 14px; background: #f7f6f2; border-radius: 14px; margin-bottom: 8px;">
+          <span style="font-size: 16px; font-weight: 500;">Note Size</span>
+          <div class="font-setting-controls">
+            <span class="font-setting-value" id="valNoteSize">16 px</span>
+            <div class="font-stepper">
+              <button class="btn-step" onclick="updateFontOption('fontSize', -1)">−</button>
+              <button class="btn-step" onclick="updateFontOption('fontSize', 1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Font Row -->
         <div class="more-menu-item" style="padding: 14px; background: #f7f6f2; border-radius: 14px;" onclick="openFontModal()">
           <span style="font-size: 16px; font-weight: 500;">Font</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -1215,6 +1255,9 @@
     </div>
 
     <div class="editor-scroll-touch-zone" id="editorScrollTouchZone"></div>
+    <div class="custom-scrollbar-track">
+      <div class="custom-scrollbar-thumb" id="customScrollThumb"></div>
+    </div>
 
     <div class="empty-main-view" id="emptyMainView">
       <svg class="main-empty-icon" viewBox="0 0 64 64" fill="none">
@@ -1288,8 +1331,9 @@
     let selectedNoteIds = new Set();
     let isProgressBarVisible = true;
 
-    /* Font Settings Values & Limits */
+    /* Font & Size Settings Values & Limits */
     let fontSettings = {
+      fontSize: 16,
       lineHeight: 1.8,
       lineWidth: 60,
       paraSpacing: 0,
@@ -1297,6 +1341,7 @@
     };
 
     const fontLimits = {
+      fontSize: { min: 10, max: 40 },
       lineHeight: { min: 1.0, max: 3.0 },
       lineWidth: { min: 20, max: 100 },
       paraSpacing: { min: 0, max: 3.0 },
@@ -1306,16 +1351,18 @@
     function updateFontOption(key, delta) {
       let val = fontSettings[key] + delta;
       val = Math.max(fontLimits[key].min, Math.min(fontLimits[key].max, val));
-      fontSettings[key] = parseFloat(val.toFixed(1));
+      fontSettings[key] = key === 'fontSize' || key === 'lineWidth' ? Math.round(val) : parseFloat(val.toFixed(1));
       applyFontSettings();
     }
 
     function applyFontSettings() {
+      document.documentElement.style.setProperty('--editor-font-size', fontSettings.fontSize + 'px');
       document.documentElement.style.setProperty('--editor-line-height', fontSettings.lineHeight + 'em');
       document.documentElement.style.setProperty('--editor-line-width', fontSettings.lineWidth + 'em');
       document.documentElement.style.setProperty('--editor-paragraph-spacing', fontSettings.paraSpacing + 'em');
       document.documentElement.style.setProperty('--editor-paragraph-indent', fontSettings.paraIndent + 'em');
 
+      document.getElementById('valNoteSize').textContent = fontSettings.fontSize + ' px';
       document.getElementById('valLineHeight').textContent = fontSettings.lineHeight.toFixed(1) + ' em';
       document.getElementById('valLineWidth').textContent = Math.round(fontSettings.lineWidth) + ' em';
       document.getElementById('valParaSpacing').textContent = fontSettings.paraSpacing.toFixed(1) + ' em';
@@ -1643,6 +1690,26 @@
       sidebarArea.classList.toggle("hidden");
     }
 
+    const customScrollThumb = document.getElementById("customScrollThumb");
+
+    function updateCustomScrollbar() {
+      const scrollHeight = editorBody.scrollHeight;
+      const clientHeight = editorBody.clientHeight;
+
+      if (scrollHeight <= clientHeight) {
+        customScrollThumb.style.opacity = "0";
+        return;
+      }
+
+      customScrollThumb.style.opacity = "1";
+      const thumbHeight = Math.max((clientHeight / scrollHeight) * clientHeight, 30);
+      const maxThumbTop = clientHeight - thumbHeight;
+      const scrollPercent = editorBody.scrollTop / (scrollHeight - clientHeight);
+
+      customScrollThumb.style.height = thumbHeight + "px";
+      customScrollThumb.style.top = (scrollPercent * maxThumbTop) + "px";
+    }
+
     function updateProgressBar() {
       const maxScroll = editorBody.scrollHeight - editorBody.clientHeight;
       if (maxScroll <= 0) {
@@ -1654,6 +1721,7 @@
     }
 
     editorBody.addEventListener("scroll", updateProgressBar, { passive: true });
+    editorBody.addEventListener("scroll", updateCustomScrollbar, { passive: true });
 
     function toggleMenu() {
       document.getElementById("categoryPanel").classList.toggle("active");
@@ -1852,6 +1920,7 @@
 
       editorBody.scrollTop = 0;
       updateProgressBar();
+      updateCustomScrollbar();
     }
 
     function saveCurrentNoteData() {
@@ -1887,6 +1956,7 @@
 
     updateTrashCount();
     applyFontSettings();
+    updateCustomScrollbar();
   </script>
 </body>
 </html>
