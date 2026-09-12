@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Notes App</title>
+  <style>
+    :root {
+      --bg-sidebar: #fbf9f6;
+      --bg-main: #fcfbfa;
+      --border-color: #eee9e0;
+      --accent-orange: #f28c38;
+      --accent-orange-light: #fef0e6;
+      --text-dark: #1c1c1e;
+      --text-muted: #8e8e93;
+      --search-bg: #efece6;
+      --selected-item: #e5e3de;
+      --progress-red: #e74c3c;
+
+      /* Font Settings Dynamic Variables */
+      --editor-line-height: 1.8em;
+      --editor-line-width: 60em;
+      --editor-paragraph-spacing: 0em;
+      --editor-paragraph-indent: 0em;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      display: flex;
+      height: 100vh;
+      background-color: var(--bg-main);
+      color: var(--text-dark);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .menu-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 100;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .menu-overlay.active {
+      display: block;
+      opacity: 1;
+    }
+
+    .category-panel {
+      position: fixed;
+      top: 0;
+      right: -280px;
+      width: 270px;
+      height: 100%;
+      background-color: #faf8f5;
+      border-left: 1px solid var(--border-color);
+      z-index: 101;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .category-panel.active {
+      right: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .panel-header .btn-icon {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #3c3c43;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 15px;
+      color: var(--text-dark);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .menu-item-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .menu-item.active {
+      background-color: #f1ede6;
+    }
+
+    .menu-item svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .menu-item-count {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .menu-section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 20px 12px 8px 12px;
+    }
+
+    .menu-divider {
+      height: 1px;
+      background-color: var(--border-color);
+      margin: 16px 8px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #fdfcfb;
+      width: 90vw;
+      max-width: 680px;
+      min-height: 450px;
+      border-radius: 32px;
+      padding: 36px 40px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 24px;
+    }
+
+    .modal-empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+    }
+
+    .modal-empty-state svg {
+      width: 72px;
+      height: 72px;
+      stroke: #c7c7cc;
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .btn-fab-add {
+      position: absolute;
+      bottom: 28px;
+      left: 28px;
+      width: 64px;
+      height: 56px;
+      background-color: var(--accent-orange);
+      border: none;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(242, 140, 56, 0.4);
+    }
+
+    .modal-header-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      border: none;
+      color: var(--accent-orange);
+      font-size: 18px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .modal-header-title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .input-category-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .folder-icon-preview {
+      width: 48px;
+      height: 48px;
+      background: #e74c3c;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .folder-icon-preview svg {
+      width: 26px;
+      height: 26px;
+      fill: white;
+    }
+
+    .input-category-name {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 20px;
+      outline: none;
+      color: var(--text-dark);
+      caret-color: var(--accent-orange);
+      direction: rtl;
+      text-align: right;
+    }
+
+    .color-picker-label {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .color-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+
+    .color-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.1s ease;
+    }
+
+    .color-circle.selected::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      right: -4px;
+      bottom: -4px;
+      border: 3px solid var(--accent-orange);
+      border-radius: 50%;
+    }
+
+    .btn-save-category {
+      width: 100%;
+      background-color: var(--accent-orange);
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 20px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: auto;
+      box-shadow: 0 4px 14px rgba(242, 140, 56, 0.3);
+    }
+
+    .sidebar {
+      width: 320px;
+      min-width: 280px;
+      background-color: var(--bg-sidebar);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      transition: margin-right 0.3s ease, opacity 0.3s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .sidebar.hidden {
+      margin-right: -320px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 6px;
+      color: #3c3c43;
+    }
+
+    .sidebar-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+
+    .btn-add-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background-color: var(--accent-orange);
+      color: white;
+      border: none;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(242, 140, 56, 0.3);
+    }
+
+    .btn-more-options {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background-color: #efece6;
+      color: var(--accent-orange);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+
+    .btn-more-options:hover {
+      background-color: #e5e1d8;
+    }
+
+    .more-options-menu {
+      position: absolute;
+      top: 36px;
+      left: 0;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+      width: 170px;
+      display: none;
+      flex-direction: column;
+      padding: 6px 0;
+      z-index: 150;
+    }
+
+    .more-options-menu.active {
+      display: flex;
+    }
+
+    .more-menu-item {
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--text-dark);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: background-color 0.15s;
+    }
+
+    .more-menu-item:hover {
+      background-color: #f5f2eb;
+    }
+
+    .selection-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background-color: #f2efe9;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+    }
+
+    .selection-bar.active {
+      display: flex;
+    }
+
+    .btn-text-action {
+      background: transparent;
+      border: none;
+      color: var(--accent-orange);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .selection-bottom-bar {
+      display: none;
+      padding: 12px 16px;
+      background-color: #f2efe9;
+      border-top: 1px solid var(--border-color);
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .selection-bottom-bar.active {
+      display: flex;
+    }
+
+    .search-box {
+      padding: 8px 16px;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input-wrapper svg {
+      position: absolute;
+      right: 10px;
+      width: 16px;
+      height: 16px;
+      fill: var(--text-muted);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 32px 8px 12px;
+      background-color: var(--search-bg);
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      color: var(--text-dark);
+      outline: none;
+      direction: rtl;
+      text-align: right;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-dark);
+    }
+
+    .empty-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .inline-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      background: var(--accent-orange);
+      color: white;
+      border-radius: 50%;
+      font-size: 11px;
+      margin: 0 2px;
+    }
+
+    .notes-list {
+      width: 100%;
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .note-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      text-align: right;
+      border-radius: 10px;
+      margin: 0 8px 4px 8px;
+      transition: background-color 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .note-item.selected {
+      background-color: var(--selected-item);
+    }
+
+    .note-checkbox {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      appearance: none;
+      outline: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .note-checkbox:checked {
+      background-color: var(--accent-orange);
+      border-color: var(--accent-orange);
+      position: relative;
+    }
+
+    .note-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 6px;
+      width: 4px;
+      height: 8px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .selection-mode .note-checkbox {
+      display: block;
+    }
+
+    .note-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .note-item-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      direction: rtl;
+      text-align: right;
+    }
+
+    .note-item-date {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-main);
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .scroll-progress-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background-color: transparent;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .scroll-progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: var(--progress-red);
+      transition: width 0.1s ease-out;
+    }
+
+    .editor-scroll-touch-zone {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 34px;
+      z-index: 65;
+      pointer-events: none;
+      touch-action: none;
+      background: transparent;
+    }
+
+    .editor-scroll-touch-zone.active {
+      pointer-events: auto;
+    }
+
+    .empty-main-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .main-empty-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      color: #a0a0a5;
+    }
+
+    .btn-add-orange {
+      margin-top: 16px;
+      background-color: var(--accent-orange);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(242, 140, 56, 0.3);
+    }
+
+    .editor-view {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      min-height: 0;
+    }
+
+    .editor-header {
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 60;
+    }
+
+    .editor-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-action-icon {
+      background: #f2efe9;
+      border: none;
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--accent-orange);
+      transition: background-color 0.2s;
+    }
+
+    .btn-action-icon:hover {
+      background-color: var(--accent-orange-light);
+    }
+
+    .btn-lock-note {
+      background: transparent;
+      border: 1.5px solid var(--accent-orange);
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+
+    .btn-lock-note svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: var(--accent-orange);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-lock-note.locked {
+      background-color: var(--accent-orange);
+      border-color: var(--accent-orange);
+    }
+
+    .btn-lock-note.locked svg {
+      stroke: #ffffff;
+    }
+
+    .btn-lock-note.locked svg circle {
+      fill: #ffffff;
+    }
+
+    .editor-header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+    }
+
+    .editor-action-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--accent-orange);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #editorOptionsMenu {
+      top: 40px;
+      left: 0;
+      right: auto;
+      z-index: 200;
+    }
+
+    .editor-body {
+      flex: 1;
+      padding: 20px 40px 150px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      min-height: 0;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      overscroll-behavior-y: contain;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      will-change: scroll-position;
+      align-items: center;
+    }
+
+    .input-note-title {
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-dark);
+      outline: none;
+      width: 100%;
+      max-width: var(--editor-line-width);
+      caret-color: var(--accent-orange);
+      direction: rtl;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .input-note-title::placeholder {
+      color: #c7c7cc;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .input-note-body {
+      border: none;
+      background: transparent;
+      font-size: 16px;
+      color: var(--text-dark);
+      outline: none;
+      width: 100%;
+      max-width: var(--editor-line-width);
+      min-height: 200px;
+      caret-color: var(--accent-orange);
+      direction: rtl;
+      text-align: right;
+      line-height: var(--editor-line-height);
+      flex-shrink: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      touch-action: pan-y;
+      padding-bottom: 150px;
+      -webkit-user-select: text;
+      user-select: text;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+
+    .input-note-body div,
+    .input-note-body p {
+      direction: inherit;
+      text-align: inherit;
+      margin-bottom: var(--editor-paragraph-spacing);
+      text-indent: var(--editor-paragraph-indent);
+    }
+
+    .input-note-body:empty::before {
+      content: attr(data-placeholder);
+      color: #c7c7cc;
+      pointer-events: none;
+      direction: rtl;
+      text-align: right;
+      display: block;
+    }
+
+    /* Modal for Settings & Font */
+    .settings-card {
+      max-width: 400px;
+      min-height: auto;
+      padding: 24px;
+      border-radius: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .font-settings-container {
+      background: #f7f6f2;
+      border-radius: 16px;
+      padding: 8px 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .font-setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #e6e3dc;
+    }
+
+    .font-setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .font-setting-label {
+      font-size: 15px;
+      color: #1c1c1e;
+      font-weight: 500;
+      direction: ltr;
+    }
+
+    .font-setting-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      direction: ltr;
+    }
+
+    .font-setting-value {
+      font-size: 14px;
+      color: #8e8e93;
+      min-width: 48px;
+      text-align: right;
+    }
+
+    .font-stepper {
+      display: flex;
+      align-items: center;
+      background: #e8e5de;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .btn-step {
+      background: transparent;
+      border: none;
+      width: 32px;
+      height: 28px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1c1c1e;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .btn-step:active {
+      background: #d8d4cb;
+    }
+
+    @media (max-width: 600px) {
+      .main-content { display: flex; }
+      .sidebar { width: 100%; position: absolute; z-index: 10; }
+      .sidebar.hidden { margin-right: -100%; }
+      .modal-card { width: 95vw; padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+
+  <div class="category-panel" id="categoryPanel">
+    <div class="panel-header">
+      <button class="btn-icon" onclick="toggleMenu()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <span style="font-weight: bold;">القائمة</span>
+    </div>
+
+    <ul class="menu-list">
+      <li class="menu-item active" id="allNotesFolder" onclick="selectFolder('all', 'كل الملاحظات', this)">
+        <div class="menu-item-content">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-orange)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span>كل الملاحظات</span>
+        </div>
+      </li>
+    </ul>
+
+    <div class="menu-section-title">
+      <span>المجلدات</span>
+    </div>
+
+    <ul class="menu-list" id="categoriesList">
+      <li class="menu-item" style="color: var(--accent-orange);" onclick="openCategoryListModal()">
+        <div class="menu-item-content">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-orange)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>مجلد جديد</span>
+        </div>
+      </li>
+    </ul>
+
+    <div class="menu-divider"></div>
+
+    <ul class="menu-list">
+      <li class="menu-item" id="trashFolder" onclick="selectFolder('trash', 'سلة المهملات', this)">
+        <div class="menu-item-content">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-orange)" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+          <span>سلة المهملات</span>
+        </div>
+        <span class="menu-item-count" id="trashCount">0</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Modal Settings -->
+  <div class="modal-overlay" id="settingsModal" onclick="closeModalOnOverlay(event, 'settingsModal')">
+    <div class="modal-card settings-card">
+      <div class="modal-header-actions" style="margin-bottom: 20px;">
+        <button class="btn-cancel" onclick="closeSettingsModal()">Done</button>
+        <div class="modal-header-title">Settings</div>
+        <div style="width: 40px;"></div>
+      </div>
+      <div class="menu-list">
+        <div class="more-menu-item" style="padding: 14px; background: #f7f6f2; border-radius: 14px;" onclick="openFontModal()">
+          <span style="font-size: 16px; font-weight: 500;">Font</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Font Settings -->
+  <div class="modal-overlay" id="fontSettingsModal" onclick="closeModalOnOverlay(event, 'fontSettingsModal')">
+    <div class="modal-card settings-card">
+      <div class="modal-header-actions" style="margin-bottom: 20px;">
+        <button class="btn-cancel" onclick="closeFontModal()">Back</button>
+        <div class="modal-header-title">Font</div>
+        <div style="width: 40px;"></div>
+      </div>
+
+      <div class="font-settings-container">
+        <!-- Line Height -->
+        <div class="font-setting-row">
+          <span class="font-setting-label">Line Height</span>
+          <div class="font-setting-controls">
+            <span class="font-setting-value" id="valLineHeight">1.8 em</span>
+            <div class="font-stepper">
+              <button class="btn-step" onclick="updateFontOption('lineHeight', -0.1)">−</button>
+              <button class="btn-step" onclick="updateFontOption('lineHeight', 0.1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Line Width -->
+        <div class="font-setting-row">
+          <span class="font-setting-label">Line Width</span>
+          <div class="font-setting-controls">
+            <span class="font-setting-value" id="valLineWidth">60 em</span>
+            <div class="font-stepper">
+              <button class="btn-step" onclick="updateFontOption('lineWidth', -2)">−</button>
+              <button class="btn-step" onclick="updateFontOption('lineWidth', 2)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paragraph Spacing -->
+        <div class="font-setting-row">
+          <span class="font-setting-label">Paragraph Spacing</span>
+          <div class="font-setting-controls">
+            <span class="font-setting-value" id="valParaSpacing">0 em</span>
+            <div class="font-stepper">
+              <button class="btn-step" onclick="updateFontOption('paraSpacing', -0.2)">−</button>
+              <button class="btn-step" onclick="updateFontOption('paraSpacing', 0.2)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paragraph Indent -->
+        <div class="font-setting-row">
+          <span class="font-setting-label">Paragraph Indent</span>
+          <div class="font-setting-controls">
+            <span class="font-setting-value" id="valParaIndent">0 em</span>
+            <div class="font-stepper">
+              <button class="btn-step" onclick="updateFontOption('paraIndent', -0.2)">−</button>
+              <button class="btn-step" onclick="updateFontOption('paraIndent', 0.2)">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="categoryListModal" onclick="closeModalOnOverlay(event, 'categoryListModal')">
+    <div class="modal-card">
+      <div class="modal-title">المجلدات</div>
+      <div class="modal-empty-state" id="modalEmptyState">
+        <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        <div style="font-weight: 700; font-size: 20px; color: var(--text-dark);">لا يوجد مجلدات بعد</div>
+      </div>
+      <button class="btn-fab-add" onclick="openAddCategoryModal()">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="white" stroke-width="2" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="addCategoryModal" onclick="closeModalOnOverlay(event, 'addCategoryModal')">
+    <div class="modal-card">
+      <div class="modal-header-actions">
+        <button class="btn-cancel" onclick="closeAddCategoryModal()">إلغاء</button>
+        <div class="modal-header-title">إضافة مجلد</div>
+        <div style="width: 50px;"></div>
+      </div>
+
+      <div class="input-category-wrapper">
+        <div class="folder-icon-preview" id="folderPreview">
+          <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        </div>
+        <input type="text" class="input-category-name" id="categoryNameInput" placeholder="اسم المجلد" dir="rtl" />
+      </div>
+
+      <div class="color-picker-label">اختر لون المجلد</div>
+      <div class="color-options">
+        <div class="color-circle selected" style="background-color: #e74c3c;" onclick="selectColor(this, '#e74c3c')"></div>
+        <div class="color-circle" style="background-color: #f28c38;" onclick="selectColor(this, '#f28c38')"></div>
+        <div class="color-circle" style="background-color: #f1c40f;" onclick="selectColor(this, '#f1c40f')"></div>
+        <div class="color-circle" style="background-color: #2ecc71;" onclick="selectColor(this, '#2ecc71')"></div>
+        <div class="color-circle" style="background-color: #3498db;" onclick="selectColor(this, '#3498db')"></div>
+        <div class="color-circle" style="background-color: #9b59b6;" onclick="selectColor(this, '#9b59b6')"></div>
+      </div>
+
+      <button class="btn-save-category" onclick="saveCategory()">حفظ</button>
+    </div>
+  </div>
+
+  <aside class="sidebar" id="sidebarArea">
+    <div class="sidebar-header">
+      <div class="header-left">
+        <button class="icon-btn" onclick="toggleMenu()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+        </button>
+        <span class="sidebar-title" id="sidebarTitle">كل الملاحظات</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-add-circle" id="btnAddNoteHeader" onclick="addNewNote()">+</button>
+        
+        <button class="btn-more-options" onclick="toggleMoreOptionsMenu(event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </button>
+
+        <div class="more-options-menu" id="moreOptionsMenu">
+          <div class="more-menu-item" onclick="enableSelectionMode()">
+            <span>تحديد الملاحظات</span>
+          </div>
+          <div class="more-menu-item" onclick="selectFolder('trash', 'سلة المهملات', document.getElementById('trashFolder'))">
+            <span>سلة المهملات</span>
+          </div>
+          <div class="more-menu-item" onclick="openSettingsModal()">
+            <span>الإعدادات</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="selection-bar" id="selectionBar">
+      <button class="btn-text-action" onclick="selectAllNotes()">تحديد الكل</button>
+      <span id="selectedCountText" style="color: var(--text-muted); font-size: 13px;">0 محددة</span>
+      <button class="btn-text-action" onclick="disableSelectionMode()">إلغاء</button>
+    </div>
+
+    <div class="search-box" id="searchBoxWrapper">
+      <div class="search-input-wrapper">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 11.99 14 9.5 14z"/></svg>
+        <input type="text" class="search-input" id="searchInput" placeholder="بحث..." dir="rtl" />
+      </div>
+    </div>
+
+    <div class="sidebar-content" id="sidebarContent">
+      <div class="empty-title" id="emptySidebarTitle">لا توجد ملاحظات</div>
+      <div class="empty-subtitle" id="emptySidebarSubtitle">
+        اضغط على زر <span class="inline-icon">+</span> لإضافة ملاحظتك الأولى!
+      </div>
+    </div>
+
+    <div class="notes-list" id="notesList"></div>
+
+    <div class="selection-bottom-bar" id="selectionBottomBar">
+      <button class="btn-text-action" style="color: var(--progress-red);" onclick="deleteSelectedNotes()">حذف المحددة</button>
+    </div>
+  </aside>
+
+  <main class="main-content" id="mainContentArea">
+
+    <div class="scroll-progress-container" id="scrollProgressContainer">
+      <div class="scroll-progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="editor-scroll-touch-zone" id="editorScrollTouchZone"></div>
+
+    <div class="empty-main-view" id="emptyMainView">
+      <svg class="main-empty-icon" viewBox="0 0 64 64" fill="none">
+        <rect x="12" y="8" width="40" height="48" rx="6" stroke="#A0A0A5" stroke-width="3" fill="#F4F2ED"/>
+        <circle cx="44" cy="44" r="10" fill="#A0A0A5"/>
+        <path d="M44 39 V49 M39 44 H49" stroke="#F4F2ED" stroke-width="2.5"/>
+      </svg>
+      <div class="empty-title" style="font-size: 18px;">لم يتم تحديد أي ملاحظة</div>
+      <button class="btn-add-orange" id="btnAddNoteEmpty" onclick="addNewNote()">إضافة ملاحظة جديدة</button>
+    </div>
+
+    <div class="editor-view" id="editorView">
+      <div class="editor-header">
+        <div class="editor-header-left">
+          <button class="btn-action-icon" id="toggleFullScreenBtn" title="توسيع" onclick="toggleFullScreenNote()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M14 10l6-6M9 21H3v-6M10 14l-6 6"/></svg>
+          </button>
+        </div>
+
+        <div class="editor-header-right">
+          <button class="btn-lock-note" id="lockNoteBtn" title="قفل التعديل" onclick="toggleNoteLock()">
+            <svg viewBox="0 0 24 24">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+
+          <button class="editor-action-btn" title="خيارات إضافية" onclick="toggleEditorOptionsMenu(event)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="var(--accent-orange)"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          </button>
+
+          <div class="more-options-menu" id="editorOptionsMenu">
+            <div class="more-menu-item" onclick="toggleProgressBarVisibility()">
+              <span id="progressBarToggleText">إخفاء شريط التقدم</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-body" id="editorBody">
+        <input type="text" class="input-note-title" id="noteTitleInput" placeholder="العنوان" dir="rtl" />
+        <div class="input-note-body" id="noteBodyInput" contenteditable="true" dir="rtl" data-placeholder="اكتب ملاحظتك هنا..."></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const titleInput = document.getElementById("noteTitleInput");
+    const noteBodyInput = document.getElementById("noteBodyInput");
+    const editorBody = document.getElementById("editorBody");
+    const progressBar = document.getElementById("progressBar");
+    const scrollProgressContainer = document.getElementById("scrollProgressContainer");
+    const editorOptionsMenu = document.getElementById("editorOptionsMenu");
+    const editorScrollTouchZone = document.getElementById("editorScrollTouchZone");
+
+    const progressBarToggleText = document.getElementById("progressBarToggleText");
+    const searchInput = document.getElementById("searchInput");
+    const categoryNameInput = document.getElementById("categoryNameInput");
+    const sidebarArea = document.getElementById("sidebarArea");
+    const sidebarTitle = document.getElementById("sidebarTitle");
+    const moreOptionsMenu = document.getElementById("moreOptionsMenu");
+    const lockNoteBtn = document.getElementById("lockNoteBtn");
+    const selectionBar = document.getElementById("selectionBar");
+    const selectionBottomBar = document.getElementById("selectionBottomBar");
+    const selectedCountText = document.getElementById("selectedCountText");
+    
+    let selectedColor = '#e74c3c';
+    let currentFolderId = 'all'; 
+    let currentNoteId = null;
+    let isSelectionMode = false;
+    let selectedNoteIds = new Set();
+    let isProgressBarVisible = true;
+
+    /* Font Settings Values & Limits */
+    let fontSettings = {
+      lineHeight: 1.8,
+      lineWidth: 60,
+      paraSpacing: 0,
+      paraIndent: 0
+    };
+
+    const fontLimits = {
+      lineHeight: { min: 1.0, max: 3.0 },
+      lineWidth: { min: 20, max: 100 },
+      paraSpacing: { min: 0, max: 3.0 },
+      paraIndent: { min: 0, max: 3.0 }
+    };
+
+    function updateFontOption(key, delta) {
+      let val = fontSettings[key] + delta;
+      val = Math.max(fontLimits[key].min, Math.min(fontLimits[key].max, val));
+      fontSettings[key] = parseFloat(val.toFixed(1));
+      applyFontSettings();
+    }
+
+    function applyFontSettings() {
+      document.documentElement.style.setProperty('--editor-line-height', fontSettings.lineHeight + 'em');
+      document.documentElement.style.setProperty('--editor-line-width', fontSettings.lineWidth + 'em');
+      document.documentElement.style.setProperty('--editor-paragraph-spacing', fontSettings.paraSpacing + 'em');
+      document.documentElement.style.setProperty('--editor-paragraph-indent', fontSettings.paraIndent + 'em');
+
+      document.getElementById('valLineHeight').textContent = fontSettings.lineHeight.toFixed(1) + ' em';
+      document.getElementById('valLineWidth').textContent = Math.round(fontSettings.lineWidth) + ' em';
+      document.getElementById('valParaSpacing').textContent = fontSettings.paraSpacing.toFixed(1) + ' em';
+      document.getElementById('valParaIndent').textContent = fontSettings.paraIndent.toFixed(1) + ' em';
+    }
+
+    function openSettingsModal() {
+      moreOptionsMenu.classList.remove("active");
+      document.getElementById("settingsModal").classList.add("active");
+    }
+
+    function closeSettingsModal() {
+      document.getElementById("settingsModal").classList.remove("active");
+    }
+
+    function openFontModal() {
+      closeSettingsModal();
+      document.getElementById("fontSettingsModal").classList.add("active");
+    }
+
+    function closeFontModal() {
+      document.getElementById("fontSettingsModal").classList.remove("active");
+      openSettingsModal();
+    }
+
+    // Touch Scroll Dragging
+    let isDraggingCustomScroll = false;
+    let customScrollStartY = 0;
+    let customScrollStartScrollTop = 0;
+
+    editorScrollTouchZone.addEventListener("touchstart", function(e) {
+      isDraggingCustomScroll = true;
+      customScrollStartY = e.touches[0].clientY;
+      customScrollStartScrollTop = editorBody.scrollTop;
+    }, { passive: true });
+
+    document.addEventListener("touchmove", function(e) {
+      if (!isDraggingCustomScroll) return;
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - customScrollStartY;
+      const scrollRatio = editorBody.scrollHeight / editorBody.clientHeight || 1;
+      
+      editorBody.scrollTop = customScrollStartScrollTop + (deltaY * scrollRatio);
+    }, { passive: true });
+
+    document.addEventListener("touchend", function() {
+      isDraggingCustomScroll = false;
+    });
+
+    function toggleEditorOptionsMenu(e) {
+      e.stopPropagation();
+      moreOptionsMenu.classList.remove("active");
+      editorOptionsMenu.classList.toggle("active");
+    }
+
+    function toggleProgressBarVisibility() {
+      isProgressBarVisible = !isProgressBarVisible;
+      if (isProgressBarVisible) {
+        scrollProgressContainer.style.display = "block";
+        progressBarToggleText.textContent = "إخفاء شريط التقدم";
+      } else {
+        scrollProgressContainer.style.display = "none";
+        progressBarToggleText.textContent = "إظهار شريط التقدم";
+      }
+      editorOptionsMenu.classList.remove("active");
+    }
+
+    let notesStorage = {
+      'all': [],
+      'trash': []
+    };
+
+    function enableSelectionMode() {
+      moreOptionsMenu.classList.remove("active");
+      isSelectionMode = true;
+      selectedNoteIds.clear();
+      sidebarArea.classList.add("selection-mode");
+      selectionBar.classList.add("active");
+      selectionBottomBar.classList.add("active");
+      updateSelectedCount();
+    }
+
+    function disableSelectionMode() {
+      isSelectionMode = false;
+      selectedNoteIds.clear();
+      sidebarArea.classList.remove("selection-mode");
+      selectionBar.classList.remove("active");
+      selectionBottomBar.classList.remove("active");
+      document.querySelectorAll('.note-checkbox').forEach(cb => cb.checked = false);
+    }
+
+    function toggleSelectNote(id, e) {
+      if (e) e.stopPropagation();
+      if (selectedNoteIds.has(id)) {
+        selectedNoteIds.delete(id);
+      } else {
+        selectedNoteIds.add(id);
+      }
+      const cb = document.getElementById("cb_" + id);
+      if (cb) cb.checked = selectedNoteIds.has(id);
+      updateSelectedCount();
+    }
+
+    function selectAllNotes() {
+      const currentNotes = notesStorage[currentFolderId] || [];
+      if (selectedNoteIds.size === currentNotes.length) {
+        selectedNoteIds.clear();
+      } else {
+        currentNotes.forEach(n => selectedNoteIds.add(n.id));
+      }
+      document.querySelectorAll('.note-checkbox').forEach(cb => {
+        const id = cb.id.replace('cb_', '');
+        cb.checked = selectedNoteIds.has(id);
+      });
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      selectedCountText.textContent = selectedNoteIds.size + " محددة";
+    }
+
+    function deleteSelectedNotes() {
+      if (selectedNoteIds.size === 0) return;
+
+      const currentNotes = notesStorage[currentFolderId] || [];
+      if (currentFolderId === 'trash') {
+        notesStorage['trash'] = currentNotes.filter(n => !selectedNoteIds.has(n.id));
+      } else {
+        const toDelete = currentNotes.filter(n => selectedNoteIds.has(n.id));
+        notesStorage[currentFolderId] = currentNotes.filter(n => !selectedNoteIds.has(n.id));
+        notesStorage['trash'].push(...toDelete);
+
+        if (currentFolderId !== 'all') {
+          notesStorage['all'] = notesStorage['all'].filter(n => !selectedNoteIds.has(n.id));
+        }
+      }
+
+      if (selectedNoteIds.has(currentNoteId)) {
+        closeEditor();
+      }
+
+      disableSelectionMode();
+      updateTrashCount();
+      renderNotesList();
+    }
+
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+
+      const range = sel.getRangeAt(0);
+      const rects = range.getClientRects();
+      if (!rects.length) return;
+
+      const lastRect = rects[rects.length - 1];
+      if (editorBody) {
+        const containerRect = editorBody.getBoundingClientRect();
+        if (lastRect.bottom > containerRect.bottom - 60) {
+          editorBody.scrollTop += 55;
+        }
+      }
+    });
+
+    function toggleNoteLock() {
+      if (!currentNoteId) return;
+
+      const currentNotes = notesStorage[currentFolderId] || [];
+      const note = currentNotes.find(n => n.id === currentNoteId);
+
+      if (note) {
+        note.isLocked = !note.isLocked;
+        applyLockState(note.isLocked);
+      }
+    }
+
+    function applyLockState(isLocked) {
+      if (isLocked || currentFolderId === 'trash') {
+        titleInput.readOnly = true;
+        noteBodyInput.setAttribute("contenteditable", "false");
+        lockNoteBtn.classList.add("locked");
+        lockNoteBtn.title = isLocked ? "تم القفل - انقر للتعديل" : "غير قابل للتعديل (في سلة المهملات)";
+        dismissKeyboard();
+      } else {
+        titleInput.readOnly = false;
+        noteBodyInput.setAttribute("contenteditable", "true");
+        lockNoteBtn.classList.remove("locked");
+        lockNoteBtn.title = "قفل التعديل";
+      }
+    }
+
+    function toggleMoreOptionsMenu(e) {
+      e.stopPropagation();
+      editorOptionsMenu.classList.remove("active");
+      moreOptionsMenu.classList.toggle("active");
+    }
+
+    document.addEventListener("click", function(e) {
+      if (!e.target.closest(".more-options-menu") && !e.target.closest(".btn-more-options") && !e.target.closest(".editor-action-btn")) {
+        moreOptionsMenu.classList.remove("active");
+        editorOptionsMenu.classList.remove("active");
+      }
+    });
+
+    function dismissKeyboard() {
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
+    }
+
+    sidebarArea.addEventListener("click", function(e) {
+      if (!e.target.closest("input, button, .note-item, .more-options-menu")) {
+        dismissKeyboard();
+      }
+    });
+
+    let touchStartY = 0;
+    document.addEventListener("touchstart", function(e) {
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener("touchmove", function(e) {
+      if (!touchStartY) return;
+
+      const sel = window.getSelection();
+      const hasActiveSelection = sel && sel.toString().length > 0;
+      if (hasActiveSelection) return;
+
+      let touchEndY = e.touches[0].clientY;
+      let deltaY = touchEndY - touchStartY;
+
+      if (deltaY > 25) {
+        dismissKeyboard();
+      }
+    }, { passive: true });
+
+    const rtlRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    const ltrRegex = /[A-Za-z\u00C0-\u024F]/;
+
+    function detectTextDirection(text) {
+      if (!text || !text.trim()) return 'rtl';
+      
+      const firstRtl = text.search(rtlRegex);
+      const firstLtr = text.search(ltrRegex);
+
+      if (firstRtl !== -1 && (firstLtr === -1 || firstRtl < firstLtr)) {
+        return 'rtl';
+      }
+      if (firstLtr !== -1 && (firstRtl === -1 || firstLtr < firstRtl)) {
+        return 'ltr';
+      }
+      return 'rtl';
+    }
+
+    function applyDirectionToInput(inputEl) {
+      const dir = detectTextDirection(inputEl.value);
+      inputEl.setAttribute("dir", dir);
+      inputEl.style.direction = dir;
+      inputEl.style.textAlign = dir === 'rtl' ? 'right' : 'left';
+    }
+
+    function applyDirectionToEditable(editorEl) {
+      if (!editorEl) return;
+      
+      const plainText = editorEl.textContent.trim();
+      if (!plainText) {
+        editorEl.setAttribute("dir", "rtl");
+        editorEl.style.direction = "rtl";
+        editorEl.style.textAlign = "right";
+        Array.from(editorEl.children).forEach(child => {
+          child.setAttribute("dir", "rtl");
+          child.style.direction = "rtl";
+          child.style.textAlign = "right";
+        });
+        return;
+      }
+
+      const children = Array.from(editorEl.childNodes);
+      children.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const dir = detectTextDirection(node.textContent);
+          node.setAttribute("dir", dir);
+          node.style.direction = dir;
+          node.style.textAlign = dir === 'rtl' ? 'right' : 'left';
+        } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+          const dir = detectTextDirection(node.textContent);
+          editorEl.setAttribute("dir", dir);
+          editorEl.style.direction = dir;
+          editorEl.style.textAlign = dir === 'rtl' ? 'right' : 'left';
+        }
+      });
+    }
+
+    [titleInput, searchInput, categoryNameInput].forEach(input => {
+      ['input', 'keyup', 'focus', 'paste'].forEach(evt => {
+        input.addEventListener(evt, () => applyDirectionToInput(input));
+      });
+    });
+
+    let saveDebounceTimer = null;
+    function scheduleSave() {
+      clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = setTimeout(saveCurrentNoteData, 300);
+    }
+
+    noteBodyInput.addEventListener('input', () => {
+      applyDirectionToEditable(noteBodyInput);
+      updateProgressBar();
+      scheduleSave();
+    });
+
+    ['keyup', 'focus', 'paste'].forEach(evt => {
+      noteBodyInput.addEventListener(evt, () => {
+        applyDirectionToEditable(noteBodyInput);
+        updateProgressBar();
+      });
+    });
+
+    let titleDebounceTimer = null;
+    titleInput.addEventListener("input", function() {
+      clearTimeout(titleDebounceTimer);
+      titleDebounceTimer = setTimeout(saveCurrentNoteData, 300);
+    });
+
+    function toggleFullScreenNote() {
+      sidebarArea.classList.toggle("hidden");
+    }
+
+    function updateProgressBar() {
+      const maxScroll = editorBody.scrollHeight - editorBody.clientHeight;
+      if (maxScroll <= 0) {
+        progressBar.style.width = "0%";
+        return;
+      }
+      const scrolledPercent = (editorBody.scrollTop / maxScroll) * 100;
+      progressBar.style.width = Math.min(100, Math.max(0, scrolledPercent)) + "%";
+    }
+
+    editorBody.addEventListener("scroll", updateProgressBar, { passive: true });
+
+    function toggleMenu() {
+      document.getElementById("categoryPanel").classList.toggle("active");
+      document.getElementById("menuOverlay").classList.toggle("active");
+    }
+
+    function openCategoryListModal() {
+      toggleMenu();
+      document.getElementById("categoryListModal").classList.add("active");
+    }
+
+    function openAddCategoryModal() {
+      document.getElementById("categoryListModal").classList.remove("active");
+      document.getElementById("addCategoryModal").classList.add("active");
+    }
+
+    function closeAddCategoryModal() {
+      document.getElementById("addCategoryModal").classList.remove("active");
+      document.getElementById("categoryNameInput").value = "";
+      applyDirectionToInput(document.getElementById("categoryNameInput"));
+    }
+
+    function closeModalOnOverlay(event, modalId) {
+      if (event.target.id === modalId) {
+        document.getElementById(modalId).classList.remove("active");
+      }
+    }
+
+    function selectColor(element, color) {
+      document.querySelectorAll('.color-circle').forEach(el => el.classList.remove('selected'));
+      element.classList.add('selected');
+      selectedColor = color;
+      document.getElementById('folderPreview').style.backgroundColor = color;
+    }
+
+    function saveCategory() {
+      const name = document.getElementById("categoryNameInput").value.trim();
+      if (!name) return;
+
+      const folderId = 'folder_' + Date.now();
+      notesStorage[folderId] = [];
+
+      const categoriesList = document.getElementById("categoriesList");
+      const newCategoryItem = document.createElement("li");
+      newCategoryItem.className = "menu-item";
+      
+      newCategoryItem.onclick = function() {
+        selectFolder(folderId, name, this);
+      };
+
+      newCategoryItem.innerHTML = `
+        <div class="menu-item-content">
+          <svg viewBox="0 0 24 24" fill="${selectedColor}"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+          <span>${name}</span>
+        </div>
+      `;
+      categoriesList.insertBefore(newCategoryItem, categoriesList.lastElementChild);
+      
+      document.getElementById("modalEmptyState").style.display = "none";
+      closeAddCategoryModal();
+    }
+
+    function updateTrashCount() {
+      const count = (notesStorage['trash'] || []).length;
+      document.getElementById("trashCount").textContent = count;
+    }
+
+    function selectFolder(folderId, folderName, element) {
+      disableSelectionMode();
+      currentFolderId = folderId;
+      sidebarTitle.textContent = folderName;
+
+      const addBtns = [document.getElementById("btnAddNoteHeader"), document.getElementById("btnAddNoteEmpty")];
+      if (folderId === 'trash') {
+        addBtns.forEach(btn => { if(btn) btn.style.display = 'none'; });
+      } else {
+        addBtns.forEach(btn => { if(btn) btn.style.display = ''; });
+      }
+
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      if (element) element.classList.add('active');
+
+      document.getElementById("categoryPanel").classList.remove("active");
+      document.getElementById("menuOverlay").classList.remove("active");
+
+      closeEditor();
+      renderNotesList();
+    }
+
+    function renderNotesList() {
+      const notesList = document.getElementById("notesList");
+      const sidebarContent = document.getElementById("sidebarContent");
+      const emptyTitle = document.getElementById("emptySidebarTitle");
+      const emptySubtitle = document.getElementById("emptySidebarSubtitle");
+
+      const currentNotes = notesStorage[currentFolderId] || [];
+      notesList.innerHTML = "";
+
+      if (currentNotes.length === 0) {
+        notesList.style.display = "none";
+        sidebarContent.style.display = "flex";
+
+        if (currentFolderId === 'trash') {
+          emptyTitle.textContent = "سلة المهملات فارغة";
+          emptySubtitle.textContent = "الملاحظات التي تقوم بحذفها تظهر هنا.";
+        } else {
+          emptyTitle.textContent = "لا توجد ملاحظات";
+          emptySubtitle.innerHTML = 'اضغط على زر <span class="inline-icon">+</span> لإضافة ملاحظتك الأولى!';
+        }
+      } else {
+        sidebarContent.style.display = "none";
+        notesList.style.display = "flex";
+
+        currentNotes.forEach(note => {
+          const noteItem = document.createElement("div");
+          noteItem.className = "note-item" + (note.id === currentNoteId ? " selected" : "");
+          noteItem.id = "note_item_" + note.id;
+          
+          noteItem.onclick = (e) => {
+            if (isSelectionMode) {
+              toggleSelectNote(note.id, e);
+            } else {
+              openNote(note.id);
+            }
+          };
+          
+          const dir = detectTextDirection(note.title);
+          const isChecked = selectedNoteIds.has(note.id) ? "checked" : "";
+          
+          noteItem.innerHTML = `
+            <input type="checkbox" class="note-checkbox" id="cb_${note.id}" ${isChecked} onclick="toggleSelectNote('${note.id}', event)" />
+            <div class="note-details">
+              <div class="note-item-title" dir="${dir}" style="text-align: ${dir === 'rtl' ? 'right' : 'left'}">${note.title || "ملاحظة جديدة"}</div>
+              <div class="note-item-date">${note.date}</div>
+            </div>
+          `;
+          notesList.appendChild(noteItem);
+        });
+      }
+    }
+
+    function addNewNote() {
+      if (currentFolderId === 'trash') return;
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+
+      const newNote = {
+        id: 'note_' + Date.now(),
+        title: '',
+        body: '',
+        date: dateStr,
+        isLocked: false,
+        originalFolder: currentFolderId
+      };
+
+      if (!notesStorage[currentFolderId]) {
+        notesStorage[currentFolderId] = [];
+      }
+
+      notesStorage[currentFolderId].unshift(newNote);
+      
+      if (currentFolderId !== 'all') {
+        notesStorage['all'].unshift(newNote);
+      }
+
+      currentNoteId = newNote.id;
+
+      renderNotesList();
+      openNote(newNote.id);
+      titleInput.focus();
+    }
+
+    function openNote(noteId) {
+      currentNoteId = noteId;
+      const currentNotes = notesStorage[currentFolderId] || [];
+      const note = currentNotes.find(n => n.id === noteId);
+
+      if (!note) return;
+
+      document.querySelectorAll('.note-item').forEach(el => el.classList.remove('selected'));
+      const activeItem = document.getElementById("note_item_" + noteId);
+      if (activeItem) activeItem.classList.add('selected');
+
+      document.getElementById("emptyMainView").style.display = "none";
+      document.getElementById("editorView").style.display = "flex";
+      editorScrollTouchZone.classList.add("active");
+
+      titleInput.value = note.title;
+      applyDirectionToInput(titleInput);
+
+      noteBodyInput.innerHTML = note.body;
+      applyDirectionToEditable(noteBodyInput);
+
+      applyLockState(!!note.isLocked);
+
+      editorBody.scrollTop = 0;
+      updateProgressBar();
+    }
+
+    function saveCurrentNoteData() {
+      if (!currentNoteId || currentFolderId === 'trash') return;
+
+      const currentNotes = notesStorage[currentFolderId] || [];
+      const note = currentNotes.find(n => n.id === currentNoteId);
+
+      if (note) {
+        note.title = titleInput.value;
+        note.body = noteBodyInput.innerHTML;
+
+        const noteItem = document.getElementById("note_item_" + currentNoteId);
+        if (noteItem) {
+          const titleText = note.title.trim() || "ملاحظة جديدة";
+          const titleElem = noteItem.querySelector('.note-item-title');
+          if (titleElem) {
+            titleElem.textContent = titleText;
+            const dir = detectTextDirection(titleText);
+            titleElem.setAttribute("dir", dir);
+            titleElem.style.textAlign = dir === 'rtl' ? 'right' : 'left';
+          }
+        }
+      }
+    }
+
+    function closeEditor() {
+      currentNoteId = null;
+      document.getElementById("editorView").style.display = "none";
+      document.getElementById("emptyMainView").style.display = "flex";
+      editorScrollTouchZone.classList.remove("active");
+    }
+
+    updateTrashCount();
+    applyFontSettings();
+  </script>
+</body>
+</html>
